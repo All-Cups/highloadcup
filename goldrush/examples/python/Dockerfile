@@ -1,5 +1,8 @@
 FROM python:latest
 
+COPY ./requirements.txt requirements.txt
+RUN pip install -U -r requirements.txt
+
 COPY ./setup.py setup.py
 
 
