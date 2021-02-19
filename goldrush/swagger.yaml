@@ -1,0 +1,271 @@
+swagger: '2.0'
+
+info:
+  title: HighLoad Cup 2021
+  version: 1.0.0
+  description: |
+    ## Usage
+    ## List of all custom errors
+    First number is HTTP Status code, second is value of "code" field in returned JSON object, text description may or may not match "message" field in returned JSON object.
+    - 422.1000: wrong coordinates
+    - 422.1001: wrong depth
+    - 409.1002: no more active licenses allowed
+    - 409.1003: treasure is not digged
+basePath: /
+schemes:
+  - http
+consumes:
+  - application/json
+produces:
+  - application/json
+
+definitions:
+  error:
+    description: |
+      This model should match output of errors returned by go-swagger
+      (like failed validation), to ensure our handlers use same format.
+    type: object
+    required:
+      - code
+      - message
+    properties:
+      code:
+        description: Either same as HTTP Status Code OR >= 600 with HTTP Status Code 422
+        type: integer
+        format: int32
+      message:
+        type: string
+  balance:
+    description: Current balance and wallet with up to 1000 coins.
+    type: object
+    required:
+      - balance
+      - wallet
+    properties:
+      balance:
+        type: integer
+        format: uint32
+      wallet:
+        $ref: '#/definitions/wallet'
+  wallet:
+    description: Wallet with some coins.
+    type: array
+    maxItems: 1000
+    uniqueItems: true
+    items:
+      type: integer
+      format: uint32
+  amount:
+    description: Non-negative amount of treasures/etc.
+    type: integer
+    minimum: 0
+  license:
+    description: License for digging.
+    type: object
+    required:
+      - id
+      - digAllowed
+      - digUsed
+    properties:
+      id:
+        type: integer
+      digAllowed:
+        $ref: '#/definitions/amount'
+      digUsed:
+        $ref: '#/definitions/amount'
+  licenseList:
+    description: List of issued licenses.
+    type: array
+    items:
+      $ref: '#/definitions/license'
+  area:
+    type: object
+    required:
+      - posX
+      - posY
+    properties:
+      posX:
+        type: integer
+        minimum: 0
+      posY:
+        type: integer
+        minimum: 0
+      sizeX:
+        type: integer
+        minimum: 1
+      sizeY:
+        type: integer
+        minimum: 1
+  report:
+    type: object
+    required:
+      - area
+      - amount
+    properties:
+      area:
+        $ref: '#/definitions/area'
+      amount:
+        $ref: '#/definitions/amount'
+  dig:
+    type: object
+    required:
+      - licenseID
+      - posX
+      - posY
+      - depth
+    properties:
+      licenseID:
+        description: ID of the license this request is attached to.
+        type: integer
+      posX:
+        type: integer
+        minimum: 0
+      posY:
+        type: integer
+        minimum: 0
+      depth:
+        type: integer
+        minimum: 1
+        maximum: 100
+  treasure:
+    description: Treasure ID.
+    type: string
+  treasureList:
+    description: List of treasures.
+    type: array
+    items:
+      $ref: '#/definitions/treasure'
+
+responses:
+  error:
+    description: General errors using same model as used by go-swagger for validation errors.
+    schema:
+      $ref: '#/definitions/error'
+  balance:
+    description: Current balance.
+    schema:
+      $ref: '#/definitions/balance'
+  licenseList:
+    description: List of issued licenses.
+    schema:
+      $ref: '#/definitions/licenseList'
+  license:
+    description: Issued license.
+    schema:
+      $ref: '#/definitions/license'
+  explore:
+    description: Report about found treasures.
+    schema:
+      $ref: '#/definitions/report'
+  dig:
+    description: List of treasures found.
+    schema:
+      $ref: '#/definitions/treasureList'
+  cash:
+    description: Payment for treasure.
+    schema:
+      $ref: '#/definitions/wallet'
+
+paths:
+  /health-check:
+    get:
+      operationId: healthCheck
+      description: Returns 200 if service works okay.
+      security: []
+      responses:
+        '200':
+          description: Extra details about service status, if any.
+          schema:
+            type: object
+            additionalProperties: true
+        default: {$ref: '#/responses/error'}
+
+  /balance:
+    get:
+      operationId: getBalance
+      description: Returns a current balance.
+      responses:
+        '200': { $ref: '#/responses/balance' }
+        default: { $ref: '#/responses/error' }
+
+  /licenses:
+    get:
+      operationId: listLicenses
+      description: Returns a list of issued licenses.
+      responses:
+        '200': { $ref: '#/responses/licenseList' }
+        default: { $ref: '#/responses/error' }
+    post:
+      operationId: issueLicense
+      description: Issue a new license.
+      parameters:
+        - name: args
+          description: Amount of money to spend for a license. Empty array for get free license. Maximum 10 active licenses
+          in: body
+          schema:
+            $ref: '#/definitions/wallet'
+      responses:
+        '200': { $ref: '#/responses/license' }
+        default:
+          description: |
+            - 409.1002: no more active licenses allowed
+          schema:
+            $ref: '#/definitions/error'
+
+  /explore:
+    post:
+      operationId: exploreArea
+      description: Returns amount of treasures in the provided area at full depth.
+      parameters:
+        - name: args
+          description: Area to be explored.
+          required: true
+          in: body
+          schema:
+            $ref: '#/definitions/area'
+      responses:
+        '200': { $ref: '#/responses/explore' }
+        default:
+          description: |
+            - 422.1000: wrong coordinates
+          schema:
+            $ref: '#/definitions/error'
+
+  /dig:
+    post:
+      operationId: dig
+      description: Dig at given point and depth, returns found treasures.
+      parameters:
+        - name: args
+          description: License, place and depth to dig.
+          required: true
+          in: body
+          schema:
+            $ref: '#/definitions/dig'
+      responses:
+        '200': { $ref: '#/responses/dig' }
+        default:
+          description: |
+            - 422.1000: wrong coordinates
+            - 422.1001: wrong depth
+          schema:
+            $ref: '#/definitions/error'
+
+  /cash:
+    post:
+      operationId: cash
+      description: Exchange provided treasure for money.
+      parameters:
+        - name: args
+          description: Treasure for exchange.
+          required: true
+          in: body
+          schema:
+            $ref: '#/definitions/treasure'
+      responses:
+        '200': { $ref: '#/responses/cash' }
+        default:
+          description: |
+            - 409.1003: treasure is not digged
+          schema:
+            $ref: '#/definitions/error'
