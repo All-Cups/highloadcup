@@ -1,2 +1,1 @@
-# highloadcup
-HighLoad Cup. Золотая лихорадка
+# Золотая лихорадка
