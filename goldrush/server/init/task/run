@@ -1,0 +1,7 @@
+#!/bin/sh
+exec 2>&1
+svcname="$(basename "$PWD")"
+
+cd ~app || exit 1
+
+exec chpst -u app bin/"${svcname}" serve

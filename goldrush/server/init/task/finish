@@ -1,0 +1,10 @@
+#!/bin/sh
+exec 2>&1
+svcname="$(basename "$PWD")"
+
+if test "$1" -eq 0 -o "$2" -eq 15; then
+	echo "$svcname is stopped"
+	sv down . /etc/sv/runsvdir
+else
+	echo "$svcname is crashed"
+fi

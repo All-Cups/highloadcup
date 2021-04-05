@@ -1,0 +1,8 @@
+#!/bin/sh
+# shellcheck shell=ash
+set -e -o pipefail
+
+test -d "${VOLUME_DIR}/log" || install -d -o log -g nogroup "${VOLUME_DIR}/log"
+echo 'e*' | install -o log -g nogroup -m 444 /dev/stdin "${VOLUME_DIR}/log/config"
+
+exec chpst -u log svlogd -tt -b 16384 "${VOLUME_DIR}/log/"

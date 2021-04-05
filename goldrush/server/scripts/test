@@ -1,0 +1,20 @@
+#!/bin/bash
+PATH=$(gobin -m -p \
+	github.com/golangci/golangci-lint/cmd/golangci-lint \
+	gotest.tools/gotestsum |
+	xargs dirname | sed -z -e 's/\n/:/g')$PATH
+set -x -e -o pipefail
+
+hadolint Dockerfile
+
+shellcheck env.sh.dist scripts/*
+
+# When https://github.com/quasilyte/go-ruleguard/issues/78 will be
+# implemented and available in golangci-lint then replace using
+# build/gorules/rules.go.
+mod="$(go list -m)"
+(! grep --color=auto -r "\"$mod/internal" pkg)
+
+golangci-lint run
+
+gotestsum -- -race -tags=integration "$@" ./...

@@ -1,0 +1,5 @@
+FROM alpine:3.12
+
+COPY bin/digger_basic /
+
+CMD ["sh","-c","/digger_basic $ADDRESS:8000"]
